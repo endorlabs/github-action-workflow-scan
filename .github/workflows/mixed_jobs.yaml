@@ -1,0 +1,61 @@
+name: Build Endorctl from a Branch
+
+on:
+  workflow_call:
+
+
+jobs:
+  build:
+    name: Build endorctl
+    runs-on: [ self-hosted, endorci-runner ]
+    permissions:
+      contents: 'read'
+      pull-requests: read
+      id-token: 'write'
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup bazel remote cache
+        env:
+          BAZEL_GCP_TOKEN: ${{ secrets.CI_BAZEL }}
+        run: |
+          export ENDOR_HOME=$PWD
+          echo $BAZEL_GCP_TOKEN | base64 -d > $ENDOR_HOME/bazel-token
+          echo "build --config=ci" >> $ENDOR_HOME/.bazelrc
+          echo "build --google_credentials="$ENDOR_HOME"/bazel-token" >> $ENDOR_HOME/.bazelrc
+
+      - name: Cache bazel repository_cache
+        uses: actions/cache/restore@v3
+        with:
+          path: |
+            /home/runner/.cache/bazel
+          key: ${{ runner.os }}-bazel-repository_cache-${{ hashFiles('WORKSPACE') }}
+          restore-keys: |
+            ${{ runner.os }}-bazel-repository_cache-
+
+      - name: 'GCP Authentication'
+        id: auth
+        uses: 'google-github-actions/auth@2671692c371cbef34ed8ded9f197670c88c9d343' #v0.8.2
+        with:
+          workload_identity_provider: ${{ secrets.CI_WORKLOAD_PROVIDER }}
+          service_account: ${{ secrets.CI_SERVICE_ACCOUNT }}
+          token_format: "access_token"
+
+      - name: Upload endorctl
+        uses: actions/upload-artifact@v3
+        with:
+          name: "endorctl"
+          path: "bazel-bin/src/golang/internal.endor.ai/service/endorctl/endorctl_/endorctl"
+
+      - name: Run the build process with Docker
+        uses: docker://ubuntu:latest
+
+      - name: Integration test
+        uses: ./.github/workflows/integration.yml
+
+      - name: local action in same repository
+        uses: ./.github/workflows/action-a
+
+      - name: local action in different repo but same org
+        uses: monorepo/action-b@v1
+
