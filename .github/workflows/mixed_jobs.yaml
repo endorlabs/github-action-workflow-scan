@@ -14,7 +14,7 @@ jobs:
       id-token: 'write'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: "actions/checkout@v4"
       - name: Setup bazel remote cache
         env:
           BAZEL_GCP_TOKEN: ${{ secrets.CI_BAZEL }}
@@ -42,7 +42,7 @@ jobs:
           token_format: "access_token"
 
       - name: Upload endorctl
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@main
         with:
           name: "endorctl"
           path: "bazel-bin/src/golang/internal.endor.ai/service/endorctl/endorctl_/endorctl"
@@ -55,7 +55,3 @@ jobs:
 
       - name: local action in same repository
         uses: ./.github/workflows/action-a
-
-      - name: local action in different repo but same org
-        uses: monorepo/action-b@v1
-
